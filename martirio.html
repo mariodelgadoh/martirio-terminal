@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>martirio.py</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --term:#000; --line:#2a2124; --ln:#5d5157;
+  --txt:#f2e9e6; --kw:#ff6b5e; --fn:#ffc857; --str:#ffb454; --attr:#7fb7ff; --num:#c8a2ff; --cmt:#7a6d72; --out:#ff8a73; --ok:#7ee0a0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{height:100%;background:#000}
+body{
+  margin:0; height:100dvh; background:#000; color:var(--txt);
+  font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  display:flex; justify-content:center; align-items:center; /* Centrado exacto */
+  overflow:hidden;
+  padding:20px;
+}
+.win{
+  container-type:inline-size; 
+  width:100%; 
+  max-width:520px; 
+  height: 100%;        /* Toma la altura disponible... */
+  max-height: 650px;   /* ...pero se limita a esto para no estirarse tanto */
+  background:#000; 
+  border:1px solid var(--line); 
+  border-radius:14px;
+  overflow-y:auto; 
+  scrollbar-width:none;
+  display:flex;
+  flex-direction:column;
+}
+.win::-webkit-scrollbar{display:none}
+.bar{position:sticky; top:0; z-index:1; display:flex; align-items:center; gap:8px; padding:10px 14px; background:#000; border-bottom:1px solid var(--line); flex-shrink:0}
+.dot{width:11px;height:11px;border-radius:50%;background:#4a3d42}
+.dot:nth-child(1){background:#ff5f56}.dot:nth-child(2){background:#ffbd2e}.dot:nth-child(3){background:#27c93f}
+.title{flex:1; text-align:center; font-size:12px; color:var(--cmt); margin-right:45px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.body{
+  padding:12px 0 8px; 
+  font-size:min(3.1cqw,1.5dvh,15px); 
+  line-height:1.45; 
+  color:var(--txt);
+  align-self: flex-start;
+  width: 100%;
+}
+.row{display:flex; padding-right:12px}
+.n{flex:0 0 auto; width:2.4ch; margin:0 1.2ch 0 .8ch; text-align:right; color:var(--ln); user-select:none}
+.row.cur .n{color:var(--txt)}
+.c{flex:1; min-width:0; white-space:pre-wrap; overflow-wrap:anywhere}
+.kw{color:var(--kw)}.fn{color:var(--fn)}.st{color:var(--str)}.at{color:var(--attr)}.nm{color:var(--num)}.cm{color:var(--cmt)}
+.caret{display:inline-block; width:.6ch; height:1.15em; vertical-align:text-bottom; background:var(--fn); margin-left:1px; animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.term{
+  border-top:1px solid var(--line); 
+  padding:10px 0 14px; 
+  font-size:min(3.1cqw,1.5dvh,15px); 
+  line-height:1.45; 
+  color:var(--txt); 
+  display:none;
+  align-self: flex-start;
+  width: 100%;
+}
+.term.on{display:block}
+.term .row{padding-left:.8rem}
+.prompt{color:var(--ok)}
+.o{color:var(--out)}
+.final{color:#fff; text-shadow:0 0 12px rgba(255,90,60,.9),0 0 28px rgba(255,60,30,.6); animation:flame 2.2s ease-in-out infinite alternate}
+@keyframes flame{from{text-shadow:0 0 8px rgba(255,90,60,.7),0 0 18px rgba(255,60,30,.4)}to{text-shadow:0 0 16px rgba(255,140,60,1),0 0 36px rgba(255,60,30,.8)}}
+@media (prefers-reduced-motion:reduce){ .final,.caret{animation:none} }
+</style>
+</head>
+<body>
+<div class="win" role="img" aria-label="Terminal que escribe el código de martirio_internom y muestra su resultado">
+  <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="title">martirio.py</span></div>
+  <div class="body" id="code"></div>
+  <div class="term" id="term"></div>
+</div>
+
+<script>
+const CODE = [
+"# The Warning · Martirio",
+"def martirio_internom():",
+"    auto_destruccion = True",
+"    esperanza_rescate = False",
+"    ",
+"    print(\">> Ejecutando ciclo de martirio...\")",
+"    ",
+"    while auto_destruccion:",
+"        dolor = \"profundo\"",
+"        salida = None # Ya no hay vuelta atrás",
+"        ",
+"        if not esperanza_rescate:",
+"            print(\">> Alerta: Nuevo abandono detectado en el vacío.\")",
+"            print(\">> Estado: El dolor se queda como nueva vida de martirio.\")",
+"            ",
+"        # El ciclo se cierra de forma inevitable",
+"        break",
+"        ",
+"    return \"Es tu destino, ¡entrégate al fuego!\"",
+"",
+"# Ejecución de la simulación",
+"resultado = martirio_internom()",
+"print(f\"\\nResultado final: {resultado}\")"
+];
+const OUT = [
+ {t:">> Ejecutando ciclo de martirio...",c:"o"},
+ {t:">> Alerta: Nuevo abandono detectado en el vacío.",c:"o"},
+ {t:">> Estado: El dolor se queda como nueva vida de martirio.",c:"o"},
+ {t:"",c:""},
+ {t:"Resultado final: Es tu destino, ¡entrégate al fuego!",c:"final"}
+];
+
+const KW = new Set(["def","while","if","not","break","return"]);
+const CONST = new Set(["True","False","None"]);
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const RX = /(#.*$)|(f?"(?:[^"\\]|\\.)*"?)|(\b[A-Za-z_]\w*\b)(\()?|(\b\d+\b)|([\s\S])/g;
+function hl(s){
+  return s.replace(RX,(m,cm,st,id,paren,num,other)=>{
+    if(cm) return `<span class="cm">${esc(cm)}</span>`;
+    if(st) return `<span class="st">${esc(st)}</span>`;
+    if(id){
+      if(KW.has(id)) return `<span class="kw">${id}</span>${paren?"(":""}`;
+      if(CONST.has(id)) return `<span class="nm">${id}</span>${paren?"(":""}`;
+      if(paren) return `<span class="fn">${id}</span>(`;
+      return id;
+    }
+    if(num) return `<span class="nm">${num}</span>`;
+    return esc(other);
+  });
+}
+
+const codeEl = document.getElementById("code");
+const termEl = document.getElementById("term");
+let token = 0, skipping = false;
+const sleep = ms => new Promise(r => setTimeout(r, skipping ? 0 : ms));
+const caret = '<span class="caret"></span>';
+
+function addRow(parent, num){
+  const r = document.createElement("div"); r.className = "row";
+  if(num !== null){ r.innerHTML = `<span class="n">${num}</span><span class="c"></span>`; }
+  else r.innerHTML = '<span class="c"></span>';
+  parent.appendChild(r); return r;
+}
+
+async function typeInto(cell, text, my, withHl){
+  let shown = "";
+  for(const ch of text){
+    if(my !== token) return false;
+    shown += ch;
+    cell.innerHTML = (withHl ? hl(shown) : esc(shown)) + caret;
+    let d = 22 + Math.random()*38;
+    if(ch === " " ) d = 12;
+    if(",.>(".includes(ch)) d += 40;
+    await sleep(d);
+  }
+  cell.innerHTML = withHl ? hl(shown) : esc(shown);
+  return true;
+}
+
+async function run(){
+  const my = ++token; skipping = false;
+  codeEl.innerHTML = ""; termEl.innerHTML = ""; termEl.classList.remove("on");
+  await sleep(500);
+  for(let i = 0; i < CODE.length; i++){
+    if(my !== token) return;
+    const row = addRow(codeEl, i+1);
+    row.classList.add("cur");
+    codeEl.querySelectorAll(".row.cur").forEach(x => { if(x !== row) x.classList.remove("cur"); });
+    const cell = row.querySelector(".c");
+    if(CODE[i] === ""){ cell.innerHTML = caret; await sleep(220); cell.innerHTML = ""; continue; }
+    if(!await typeInto(cell, CODE[i], my, true)) return;
+    row.scrollIntoView({block:"nearest"});
+    await sleep(CODE[i].trim()===""? 40 : 170);
+  }
+  codeEl.querySelectorAll(".row.cur").forEach(x => x.classList.remove("cur"));
+  await sleep(600);
+  if(my !== token) return;
+  termEl.classList.add("on");
+  const pr = addRow(termEl, null);
+  pr.querySelector(".c").innerHTML = '<span class="prompt">$ </span>';
+  const cmd = document.createElement("span"); pr.querySelector(".c").appendChild(cmd);
+  if(!await typeInto(cmd, "python martirio.py", my, false)) return;
+  await sleep(500);
+  for(const o of OUT){
+    if(my !== token) return;
+    const r = addRow(termEl, null);
+    const c = r.querySelector(".c");
+    if(o.c) c.className = "c " + o.c;
+    if(o.t === ""){ c.innerHTML = " "; await sleep(350); continue; }
+    if(!await typeInto(c, o.t, my, false)) return;
+    r.scrollIntoView({block:"nearest"});
+    await sleep(380);
+  }
+  const last = addRow(termEl, null);
+  last.querySelector(".c").innerHTML = '<span class="prompt">$ </span>' + caret;
+  last.scrollIntoView({block:"nearest"});
+  await sleep(15000);
+  if(my === token) run();
+}
+
+run();
+</script>
+</body>
+</html>
